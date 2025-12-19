@@ -1649,6 +1649,12 @@ def cli_deploy_cloud_run(
         " directory, if any.)"
     ),
 )
+@click.option(
+    "--log_level",
+    type=LOG_LEVELS,
+    default="INFO",
+    help="Optional. Set the logging level",
+)
 @click.argument(
     "agent",
     type=click.Path(
@@ -1672,6 +1678,7 @@ def cli_deploy_agent_engine(
     requirements_file: str,
     absolutize_imports: bool,
     agent_engine_config_file: str,
+    log_level: str,
 ):
   """Deploys an agent to Agent Engine.
 
@@ -1685,7 +1692,7 @@ def cli_deploy_agent_engine(
       --staging_bucket=[staging_bucket] --display_name=[app_name]
       my_agent
   """
-  logging.getLogger("vertexai_genai.agentengines").setLevel(logging.INFO)
+  logs.setup_adk_logger(getattr(logging, log_level.upper()))
   try:
     cli_deploy.to_agent_engine(
         agent_folder=agent,
