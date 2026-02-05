@@ -267,3 +267,74 @@ async def test_inject_session_state_with_optional_missing_state_returns_empty():
       instruction_template, invocation_context
   )
   assert populated_instruction == "Optional value: "
+
+
+@pytest.mark.asyncio
+async def test_inject_session_state_with_double_brace_escaping():
+  instruction_template = "Example: {{user_id}}"
+  invocation_context = await _create_test_readonly_context()
+
+  populated_instruction = await instructions_utils.inject_session_state(
+      instruction_template, invocation_context
+  )
+  assert populated_instruction == "Example: {user_id}"
+
+
+@pytest.mark.asyncio
+async def test_inject_session_state_with_double_brace_escaping_and_normal_substitution():
+  instruction_template = "Hello {name}, example: {{variable}}"
+  invocation_context = await _create_test_readonly_context(
+      state={"name": "Alice"}
+  )
+
+  populated_instruction = await instructions_utils.inject_session_state(
+      instruction_template, invocation_context
+  )
+  assert populated_instruction == "Hello Alice, example: {variable}"
+
+
+@pytest.mark.asyncio
+async def test_inject_session_state_with_python_fstring_example():
+  instruction_template = """
+Example Python code:
+logger.error(f"User not found: {{user_id}}")
+"""
+  invocation_context = await _create_test_readonly_context()
+
+  populated_instruction = await instructions_utils.inject_session_state(
+      instruction_template, invocation_context
+  )
+  expected = """
+Example Python code:
+logger.error(f"User not found: {user_id}")
+"""
+  assert populated_instruction == expected
+
+
+@pytest.mark.asyncio
+async def test_inject_session_state_with_typescript_template_literal():
+  instruction_template = """
+Example TypeScript code:
+console.log(`User: ${{userId}}`);
+"""
+  invocation_context = await _create_test_readonly_context()
+
+  populated_instruction = await instructions_utils.inject_session_state(
+      instruction_template, invocation_context
+  )
+  expected = """
+Example TypeScript code:
+console.log(`User: ${userId}`);
+"""
+  assert populated_instruction == expected
+
+
+@pytest.mark.asyncio
+async def test_inject_session_state_with_multiple_double_brace_patterns():
+  instruction_template = "Examples: {{var1}}, {{var2}}, {{var3}}"
+  invocation_context = await _create_test_readonly_context()
+
+  populated_instruction = await instructions_utils.inject_session_state(
+      instruction_template, invocation_context
+  )
+  assert populated_instruction == "Examples: {var1}, {var2}, {var3}"
