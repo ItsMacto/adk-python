@@ -1200,7 +1200,7 @@ def test_agent_tool_skip_summarization_has_text_output():
 
   assert any(p.function_response for p in last_event.content.parts)
 
-  assert any("tool_response_text" in (p.text or "") for p in last_event.content.parts)
+  assert [p.text for p in last_event.content.parts if p.text] == ["tool_response_text"]
 
 
 def test_agent_tool_skip_summarization_preserves_json_string_output():
@@ -1235,8 +1235,42 @@ def test_agent_tool_skip_summarization_preserves_json_string_output():
   text_parts = [p.text for p in last_event.content.parts if p.text]
   assert text_parts
 
-  # Check that the JSON string content is preserved
-  assert any(
-      "field" in (p.text or "") and "value" in (p.text or "")
-      for p in last_event.content.parts
+  # Check that the JSON string content is preserved exactly
+  assert text_parts == ['{"field": "value"}']
+
+
+def test_agent_tool_skip_summarization_handles_non_string_result():
+  """Tests that non-string (dict) output is correctly serialized as JSON text."""
+
+  class CustomOutput(BaseModel):
+      value: int
+
+  tool_agent_model = testing_utils.MockModel.create(responses=['{"value": 123}'])
+  tool_agent = Agent(
+      name="tool_agent",
+      model=tool_agent_model,
+      output_schema=CustomOutput
   )
+
+  agent_tool = AgentTool(agent=tool_agent, skip_summarization=True)
+
+  root_agent_model = testing_utils.MockModel.create(
+      responses=[function_call_no_schema]
+  )
+
+  root_agent = Agent(
+      name="root_agent",
+      model=root_agent_model,
+      tools=[agent_tool],
+  )
+
+  runner = testing_utils.InMemoryRunner(root_agent)
+  events = runner.run("start")
+
+  final_events = [e for e in events if e.is_final_response()]
+  assert final_events
+  last_event = final_events[-1]
+  
+  text_parts = [p.text for p in last_event.content.parts if p.text]
+  
+  assert text_parts == ['{"value": 123}']
