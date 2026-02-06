@@ -14,6 +14,7 @@
 
 from typing import Any
 from typing import Optional
+import pytest
 
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.invocation_context import InvocationContext
@@ -1166,31 +1167,37 @@ class TestAgentToolWithCompositeAgents:
     assert declaration.parameters.properties['request'].type == 'STRING'
 
 
-def test_agent_tool_skip_summarization_has_text_output():
+@pytest.fixture
+def setup_skip_summarization_runner():
+  def _setup_runner(tool_agent_model_responses, tool_agent_output_schema=None):
+    tool_agent_model = testing_utils.MockModel.create(responses=tool_agent_model_responses)
+    tool_agent = Agent(
+        name="tool_agent",
+        model=tool_agent_model,
+        output_schema=tool_agent_output_schema
+    )
+
+    agent_tool = AgentTool(agent=tool_agent, skip_summarization=True)
+
+    root_agent_model = testing_utils.MockModel.create(
+        responses=[
+            function_call_no_schema,
+            "final_summary_text_that_should_not_be_reached",
+        ]
+    )
+
+    root_agent = Agent(
+        name="root_agent",
+        model=root_agent_model,
+        tools=[agent_tool],
+    )
+    return testing_utils.InMemoryRunner(root_agent)
+  return _setup_runner
+
+
+def test_agent_tool_skip_summarization_has_text_output(setup_skip_summarization_runner):
   """Tests that when skip_summarization is True, the final event contains text content."""
-
-  tool_agent_model = testing_utils.MockModel.create(responses=["tool_response_text"])
-  tool_agent = Agent(
-      name="tool_agent",
-      model=tool_agent_model,
-  )
-
-  agent_tool = AgentTool(agent=tool_agent, skip_summarization=True)
-
-  root_agent_model = testing_utils.MockModel.create(
-      responses=[
-          function_call_no_schema,
-          "final_summary_text_that_should_not_be_reached",
-      ]
-  )
-
-  root_agent = Agent(
-      name="root_agent",
-      model=root_agent_model,
-      tools=[agent_tool],
-  )
-
-  runner = testing_utils.InMemoryRunner(root_agent)
+  runner = setup_skip_summarization_runner(tool_agent_model_responses=["tool_response_text"])
   events = runner.run("start")
 
   final_events = [e for e in events if e.is_final_response()]
@@ -1203,28 +1210,9 @@ def test_agent_tool_skip_summarization_has_text_output():
   assert [p.text for p in last_event.content.parts if p.text] == ["tool_response_text"]
 
 
-def test_agent_tool_skip_summarization_preserves_json_string_output():
+def test_agent_tool_skip_summarization_preserves_json_string_output(setup_skip_summarization_runner):
   """Tests that structured output string is preserved as text when skipping summarization."""
-
-  tool_agent_model = testing_utils.MockModel.create(responses=['{"field": "value"}'])
-  tool_agent = Agent(
-      name="tool_agent",
-      model=tool_agent_model,
-  )
-
-  agent_tool = AgentTool(agent=tool_agent, skip_summarization=True)
-
-  root_agent_model = testing_utils.MockModel.create(
-      responses=[function_call_no_schema]
-  )
-
-  root_agent = Agent(
-      name="root_agent",
-      model=root_agent_model,
-      tools=[agent_tool],
-  )
-
-  runner = testing_utils.InMemoryRunner(root_agent)
+  runner = setup_skip_summarization_runner(tool_agent_model_responses=['{"field": "value"}'])
   events = runner.run("start")
 
   final_events = [e for e in events if e.is_final_response()]
@@ -1233,38 +1221,20 @@ def test_agent_tool_skip_summarization_preserves_json_string_output():
   assert last_event.is_final_response()
 
   text_parts = [p.text for p in last_event.content.parts if p.text]
-  assert text_parts
-
+  
   # Check that the JSON string content is preserved exactly
   assert text_parts == ['{"field": "value"}']
 
 
-def test_agent_tool_skip_summarization_handles_non_string_result():
+def test_agent_tool_skip_summarization_handles_non_string_result(setup_skip_summarization_runner):
   """Tests that non-string (dict) output is correctly serialized as JSON text."""
-
   class CustomOutput(BaseModel):
       value: int
 
-  tool_agent_model = testing_utils.MockModel.create(responses=['{"value": 123}'])
-  tool_agent = Agent(
-      name="tool_agent",
-      model=tool_agent_model,
-      output_schema=CustomOutput
+  runner = setup_skip_summarization_runner(
+      tool_agent_model_responses=['{"value": 123}'],
+      tool_agent_output_schema=CustomOutput
   )
-
-  agent_tool = AgentTool(agent=tool_agent, skip_summarization=True)
-
-  root_agent_model = testing_utils.MockModel.create(
-      responses=[function_call_no_schema]
-  )
-
-  root_agent = Agent(
-      name="root_agent",
-      model=root_agent_model,
-      tools=[agent_tool],
-  )
-
-  runner = testing_utils.InMemoryRunner(root_agent)
   events = runner.run("start")
 
   final_events = [e for e in events if e.is_final_response()]
