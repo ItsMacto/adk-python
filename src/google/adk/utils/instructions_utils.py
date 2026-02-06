@@ -81,7 +81,13 @@ async def inject_session_state(
   async def _replace_match(match) -> str:
     matched_text = match.group()
 
-    if matched_text.startswith("{{") and matched_text.endswith("}}"):
+    # Check for exactly double braces (escaping)
+    if (
+        matched_text.startswith("{{")
+        and matched_text.endswith("}}")
+        and not matched_text.startswith("{{{")
+        and not matched_text.endswith("}}}")
+    ):
       return matched_text[1:-1]
 
     var_name = matched_text.lstrip("{").rstrip("}").strip()
