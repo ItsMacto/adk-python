@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 import copy
 import functools
 import inspect
+import json
 import logging
 import threading
 from typing import Any
@@ -961,6 +962,17 @@ def __build_response_event(
       role='user',
       parts=[part_function_response],
   )
+
+  if tool_context.actions.skip_summarization:
+    # When summarization is skipped, ensure a displayable text part is added.
+    if isinstance(function_result.get('result'), str):
+      result_text = function_result['result']
+    else:
+      # Safely serialize non-string results to JSON for display.
+      result_text = json.dumps(
+          function_result, ensure_ascii=False, default=str
+      )
+    content.parts.append(types.Part.from_text(text=result_text))
 
   function_response_event = Event(
       invocation_id=invocation_context.invocation_id,
