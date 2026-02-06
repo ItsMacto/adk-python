@@ -965,12 +965,13 @@ def __build_response_event(
 
   if tool_context.actions.skip_summarization:
     # When summarization is skipped, ensure a displayable text part is added.
-    if isinstance(function_result.get('result'), str):
-      result_text = function_result['result']
+    result_payload = function_result.get('result', function_result)
+    if isinstance(result_payload, str):
+      result_text = result_payload
     else:
       # Safely serialize non-string results to JSON for display.
       result_text = json.dumps(
-          function_result.get('result', function_result), ensure_ascii=False, default=str
+          result_payload, ensure_ascii=False, default=str
       )
     content.parts.append(types.Part.from_text(text=result_text))
 
