@@ -972,9 +972,7 @@ def __build_response_event(
       result_text = result_payload
     else:
       # Safely serialize non-string results to JSON for display.
-      result_text = json.dumps(
-          result_payload, ensure_ascii=False, default=str
-      )
+      result_text = json.dumps(result_payload, ensure_ascii=False, default=str)
     content.parts.append(types.Part.from_text(text=result_text))
 
   function_response_event = Event(

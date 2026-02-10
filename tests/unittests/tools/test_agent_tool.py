@@ -14,7 +14,6 @@
 
 from typing import Any
 from typing import Optional
-import pytest
 
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.invocation_context import InvocationContext
@@ -1170,11 +1169,13 @@ class TestAgentToolWithCompositeAgents:
 @pytest.fixture
 def setup_skip_summarization_runner():
   def _setup_runner(tool_agent_model_responses, tool_agent_output_schema=None):
-    tool_agent_model = testing_utils.MockModel.create(responses=tool_agent_model_responses)
+    tool_agent_model = testing_utils.MockModel.create(
+        responses=tool_agent_model_responses
+    )
     tool_agent = Agent(
-        name="tool_agent",
+        name='tool_agent',
         model=tool_agent_model,
-        output_schema=tool_agent_output_schema
+        output_schema=tool_agent_output_schema,
     )
 
     agent_tool = AgentTool(agent=tool_agent, skip_summarization=True)
@@ -1182,23 +1183,28 @@ def setup_skip_summarization_runner():
     root_agent_model = testing_utils.MockModel.create(
         responses=[
             function_call_no_schema,
-            "final_summary_text_that_should_not_be_reached",
+            'final_summary_text_that_should_not_be_reached',
         ]
     )
 
     root_agent = Agent(
-        name="root_agent",
+        name='root_agent',
         model=root_agent_model,
         tools=[agent_tool],
     )
     return testing_utils.InMemoryRunner(root_agent)
+
   return _setup_runner
 
 
-def test_agent_tool_skip_summarization_has_text_output(setup_skip_summarization_runner):
+def test_agent_tool_skip_summarization_has_text_output(
+    setup_skip_summarization_runner,
+):
   """Tests that when skip_summarization is True, the final event contains text content."""
-  runner = setup_skip_summarization_runner(tool_agent_model_responses=["tool_response_text"])
-  events = runner.run("start")
+  runner = setup_skip_summarization_runner(
+      tool_agent_model_responses=['tool_response_text']
+  )
+  events = runner.run('start')
 
   final_events = [e for e in events if e.is_final_response()]
   assert final_events
@@ -1207,13 +1213,19 @@ def test_agent_tool_skip_summarization_has_text_output(setup_skip_summarization_
 
   assert any(p.function_response for p in last_event.content.parts)
 
-  assert [p.text for p in last_event.content.parts if p.text] == ["tool_response_text"]
+  assert [p.text for p in last_event.content.parts if p.text] == [
+      'tool_response_text'
+  ]
 
 
-def test_agent_tool_skip_summarization_preserves_json_string_output(setup_skip_summarization_runner):
+def test_agent_tool_skip_summarization_preserves_json_string_output(
+    setup_skip_summarization_runner,
+):
   """Tests that structured output string is preserved as text when skipping summarization."""
-  runner = setup_skip_summarization_runner(tool_agent_model_responses=['{"field": "value"}'])
-  events = runner.run("start")
+  runner = setup_skip_summarization_runner(
+      tool_agent_model_responses=['{"field": "value"}']
+  )
+  events = runner.run('start')
 
   final_events = [e for e in events if e.is_final_response()]
   assert final_events
@@ -1221,26 +1233,29 @@ def test_agent_tool_skip_summarization_preserves_json_string_output(setup_skip_s
   assert last_event.is_final_response()
 
   text_parts = [p.text for p in last_event.content.parts if p.text]
-  
+
   # Check that the JSON string content is preserved exactly
   assert text_parts == ['{"field": "value"}']
 
 
-def test_agent_tool_skip_summarization_handles_non_string_result(setup_skip_summarization_runner):
+def test_agent_tool_skip_summarization_handles_non_string_result(
+    setup_skip_summarization_runner,
+):
   """Tests that non-string (dict) output is correctly serialized as JSON text."""
+
   class CustomOutput(BaseModel):
-      value: int
+    value: int
 
   runner = setup_skip_summarization_runner(
       tool_agent_model_responses=['{"value": 123}'],
-      tool_agent_output_schema=CustomOutput
+      tool_agent_output_schema=CustomOutput,
   )
-  events = runner.run("start")
+  events = runner.run('start')
 
   final_events = [e for e in events if e.is_final_response()]
   assert final_events
   last_event = final_events[-1]
-  
+
   text_parts = [p.text for p in last_event.content.parts if p.text]
-  
+
   assert text_parts == ['{"value": 123}']
