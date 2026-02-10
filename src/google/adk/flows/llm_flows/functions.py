@@ -943,6 +943,9 @@ def __build_response_event(
     tool_context: ToolContext,
     invocation_context: InvocationContext,
 ) -> Event:
+  # Capture the raw result for display purposes before any normalization.
+  display_result = function_result
+
   # Specs requires the result to be a dict.
   if not isinstance(function_result, dict):
     function_result = {'result': function_result}
@@ -959,14 +962,12 @@ def __build_response_event(
 
   # When summarization is skipped, ensure a displayable text part is added.
   if tool_context.actions.skip_summarization and 'error' not in function_result:
-    # This unwraps the value for display; otherwise, it uses the original dict.
-    result_payload = function_result.get('result', function_result)
-    if result_payload is not None:
-      if isinstance(result_payload, str):
-        result_text = result_payload
+    if display_result is not None:
+      if isinstance(display_result, str):
+        result_text = display_result
       else:
         result_text = json.dumps(
-            result_payload, ensure_ascii=False, default=str
+            display_result, ensure_ascii=False, default=str
         )
       content.parts.append(types.Part.from_text(text=result_text))
 
