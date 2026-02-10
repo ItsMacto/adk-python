@@ -959,14 +959,12 @@ def __build_response_event(
 
   # When summarization is skipped, ensure a displayable text part is added.
   if tool_context.actions.skip_summarization and 'error' not in function_result:
-    # If the tool returned a non-dict, it was wrapped in {'result': ...}.
     # This unwraps the value for display; otherwise, it uses the original dict.
     result_payload = function_result.get('result', function_result)
     if result_payload is not None:
       if isinstance(result_payload, str):
         result_text = result_payload
       else:
-        # Safely serialize non-string results to JSON for display.
         result_text = json.dumps(
             result_payload, ensure_ascii=False, default=str
         )
