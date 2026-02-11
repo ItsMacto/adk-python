@@ -221,26 +221,16 @@ You could retry calling this tool, but it is IMPORTANT for you to provide all th
       self, target: Callable[..., Any], args_to_call: dict[str, Any]
   ) -> Any:
     """Invokes a callable, handling both sync and async cases."""
+    # Call first, then dispatch based on the result type to handle
+    result = target(**args_to_call)
 
-    # Handle async generator functions (streaming tools)
-    is_async_gen = inspect.isasyncgenfunction(target) or (
-        hasattr(target, '__call__')
-        and inspect.isasyncgenfunction(target.__call__)
-    )
-    if is_async_gen:
-      return [item async for item in target(**args_to_call)]
-
-    # Functions are callable objects, but not all callable objects are functions
-    # checking coroutine function is not enough. We also need to check whether
-    # Callable's __call__ function is a coroutine function
-    is_async = inspect.iscoroutinefunction(target) or (
-        hasattr(target, '__call__')
-        and inspect.iscoroutinefunction(target.__call__)
-    )
-    if is_async:
-      return await target(**args_to_call)
-    else:
-      return target(**args_to_call)
+    if inspect.isasyncgen(result):
+      return [item async for item in result]
+    if inspect.isgenerator(result):
+      return list(result)
+    if inspect.isawaitable(result):
+      return await result
+    return result
 
   # TODO(hangfei): fix call live for function stream.
   async def _call_live(

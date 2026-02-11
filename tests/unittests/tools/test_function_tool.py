@@ -14,6 +14,7 @@
 
 import collections.abc
 from typing import AsyncGenerator
+from typing import Generator
 from unittest.mock import MagicMock
 
 from google.adk.agents.invocation_context import InvocationContext
@@ -454,7 +455,27 @@ async def test_run_async_streaming_generator():
 
   tool = FunctionTool(streaming_tool)
 
-  result = await tool.run_async(args={"param": "test"}, tool_context=MagicMock())
+  result = await tool.run_async(
+      args={"param": "test"}, tool_context=MagicMock()
+  )
+
+  assert isinstance(result, list)
+  assert result == ["part 1 test", "part 2 test"]
+
+
+@pytest.mark.asyncio
+async def test_run_async_sync_generator():
+  """Test that run_async consumes the sync generator and returns a list."""
+
+  def sync_generator_tool(param: str) -> Generator[str, None, None]:
+    yield f"part 1 {param}"
+    yield f"part 2 {param}"
+
+  tool = FunctionTool(sync_generator_tool)
+
+  result = await tool.run_async(
+      args={"param": "test"}, tool_context=MagicMock()
+  )
 
   assert isinstance(result, list)
   assert result == ["part 1 test", "part 2 test"]
