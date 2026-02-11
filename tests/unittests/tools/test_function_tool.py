@@ -454,7 +454,7 @@ async def test_run_async_streaming_generator():
 
   tool = FunctionTool(streaming_tool)
 
-  result = await tool.run_async(args={"param": "test"}, tool_context=None)
+  result = await tool.run_async(args={"param": "test"}, tool_context=MagicMock())
 
   assert isinstance(result, list)
   assert result == ["part 1 test", "part 2 test"]
