@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections.abc
+from typing import AsyncGenerator
 from unittest.mock import MagicMock
 
 from google.adk.agents.invocation_context import InvocationContext
@@ -200,9 +202,11 @@ async def test_run_async_1_missing_arg_sync_func():
   args = {"arg1": "test_value_1"}
   result = await tool.run_async(args=args, tool_context=MagicMock())
   assert result == {
-      "error": """Invoking `function_for_testing_with_2_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
+      "error": (
+          """Invoking `function_for_testing_with_2_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
 arg2
 You could retry calling this tool, but it is IMPORTANT for you to provide all the mandatory parameters."""
+      )
   }
 
 
@@ -213,9 +217,11 @@ async def test_run_async_1_missing_arg_async_func():
   args = {"arg2": "test_value_1"}
   result = await tool.run_async(args=args, tool_context=MagicMock())
   assert result == {
-      "error": """Invoking `async_function_for_testing_with_2_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
+      "error": (
+          """Invoking `async_function_for_testing_with_2_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
 arg1
 You could retry calling this tool, but it is IMPORTANT for you to provide all the mandatory parameters."""
+      )
   }
 
 
@@ -226,11 +232,13 @@ async def test_run_async_3_missing_arg_sync_func():
   args = {"arg2": "test_value_1"}
   result = await tool.run_async(args=args, tool_context=MagicMock())
   assert result == {
-      "error": """Invoking `function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
+      "error": (
+          """Invoking `function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
 arg1
 arg3
 arg4
 You could retry calling this tool, but it is IMPORTANT for you to provide all the mandatory parameters."""
+      )
   }
 
 
@@ -241,11 +249,13 @@ async def test_run_async_3_missing_arg_async_func():
   args = {"arg3": "test_value_1"}
   result = await tool.run_async(args=args, tool_context=MagicMock())
   assert result == {
-      "error": """Invoking `async_function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
+      "error": (
+          """Invoking `async_function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
 arg1
 arg2
 arg4
 You could retry calling this tool, but it is IMPORTANT for you to provide all the mandatory parameters."""
+      )
   }
 
 
@@ -256,12 +266,14 @@ async def test_run_async_missing_all_arg_sync_func():
   args = {}
   result = await tool.run_async(args=args, tool_context=MagicMock())
   assert result == {
-      "error": """Invoking `function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
+      "error": (
+          """Invoking `function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
 arg1
 arg2
 arg3
 arg4
 You could retry calling this tool, but it is IMPORTANT for you to provide all the mandatory parameters."""
+      )
   }
 
 
@@ -272,12 +284,14 @@ async def test_run_async_missing_all_arg_async_func():
   args = {}
   result = await tool.run_async(args=args, tool_context=MagicMock())
   assert result == {
-      "error": """Invoking `async_function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
+      "error": (
+          """Invoking `async_function_for_testing_with_4_arg_and_no_tool_context()` failed as the following mandatory input parameters are not present:
 arg1
 arg2
 arg3
 arg4
 You could retry calling this tool, but it is IMPORTANT for you to provide all the mandatory parameters."""
+      )
   }
 
 
@@ -428,3 +442,19 @@ async def test_run_async_parameter_filtering(mock_tool_context):
   assert result == {"arg1": "test", "arg2": 42}
   # Explicitly verify that unexpected_param was filtered out and not passed to the function
   assert "unexpected_param" not in result
+
+
+@pytest.mark.asyncio
+async def test_run_async_streaming_generator():
+  """Test that run_async consumes the async generator and returns a list."""
+
+  async def streaming_tool(param: str) -> AsyncGenerator[str, None]:
+    yield f"part 1 {param}"
+    yield f"part 2 {param}"
+
+  tool = FunctionTool(streaming_tool)
+
+  result = await tool.run_async(args={"param": "test"}, tool_context=None)
+
+  assert isinstance(result, list)
+  assert result == ["part 1 test", "part 2 test"]

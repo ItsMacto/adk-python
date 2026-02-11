@@ -394,6 +394,10 @@ def from_function_with_options(
 
   return_annotation = inspect.signature(func).return_annotation
 
+  # Resolve deferred type hints.
+  if 'return' in annotation_under_future:
+    return_annotation = annotation_under_future['return']
+
   # Handle AsyncGenerator and Generator return types (streaming tools)
   # AsyncGenerator[YieldType, SendType] -> use YieldType as response schema
   # Generator[YieldType, SendType, ReturnType] -> use YieldType as response schema

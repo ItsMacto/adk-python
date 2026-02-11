@@ -222,6 +222,17 @@ You could retry calling this tool, but it is IMPORTANT for you to provide all th
   ) -> Any:
     """Invokes a callable, handling both sync and async cases."""
 
+    # Handle async generator functions (streaming tools)
+    is_async_gen = inspect.isasyncgenfunction(target) or (
+        hasattr(target, '__call__')
+        and inspect.isasyncgenfunction(target.__call__)
+    )
+    if is_async_gen:
+      results = []
+      async for item in target(**args_to_call):
+        results.append(item)
+      return results
+
     # Functions are callable objects, but not all callable objects are functions
     # checking coroutine function is not enough. We also need to check whether
     # Callable's __call__ function is a coroutine function

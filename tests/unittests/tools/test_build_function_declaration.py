@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections.abc
 from enum import Enum
 
 from google.adk.features import FeatureName
@@ -661,3 +662,25 @@ class TestJsonSchemaFeatureFlagEnabled:
     schema = decl.parameters_json_schema
     assert schema['properties']['name']['default'] == 'World'
     assert 'name' not in schema.get('required', [])
+
+
+def test_schema_generation_for_streaming_tool_with_string_annotations():
+  """Test schema generation for AsyncGenerator with string annotations."""
+
+  # Simulate string annotation by using forward reference string
+  # This mimics "from __future__ import annotations" behavior
+  async def streaming_tool(
+      param: str,
+  ) -> 'collections.abc.AsyncGenerator[str, None]':
+    """A streaming tool."""
+    yield f'result {param}'
+
+  function_decl = _automatic_function_calling_util.build_function_declaration(
+      func=streaming_tool, variant=GoogleLLMVariant.VERTEX_AI
+  )
+
+  assert function_decl.name == 'streaming_tool'
+  assert function_decl.parameters.type == 'OBJECT'
+  # VERTEX_AI should have response schema for string return (yield type)
+  assert function_decl.response is not None
+  assert function_decl.response.type == types.Type.STRING
