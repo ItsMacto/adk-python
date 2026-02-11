@@ -228,10 +228,7 @@ You could retry calling this tool, but it is IMPORTANT for you to provide all th
         and inspect.isasyncgenfunction(target.__call__)
     )
     if is_async_gen:
-      results = []
-      async for item in target(**args_to_call):
-        results.append(item)
-      return results
+      return [item async for item in target(**args_to_call)]
 
     # Functions are callable objects, but not all callable objects are functions
     # checking coroutine function is not enough. We also need to check whether
