@@ -224,12 +224,13 @@ You could retry calling this tool, but it is IMPORTANT for you to provide all th
     # Call first, then dispatch based on the result type to handle
     result = target(**args_to_call)
 
-    if inspect.isasyncgen(result):
-      return [item async for item in result]
-    if inspect.isgenerator(result):
-      return list(result)
     if inspect.isawaitable(result):
-      return await result
+        result = await result
+
+    if inspect.isasyncgen(result):
+        return [item async for item in result]
+    if inspect.isgenerator(result):
+        return list(result)
     return result
 
   # TODO(hangfei): fix call live for function stream.
